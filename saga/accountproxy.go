@@ -27,12 +27,10 @@ func (p *AccountProxy) Receive(ctx actor.Context) {
 		return
 
 	case *messages.OK:
-		ctx.CancelReceiveTimeout()
 		ctx.Parent().Tell(msg)
 		return
 
 	case *messages.Refused:
-		ctx.CancelReceiveTimeout()
 		ctx.Parent().Tell(msg)
 		return
 
