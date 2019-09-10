@@ -13,6 +13,7 @@ require (
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/couchbase/gocb v1.5.2 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
+	github.com/gogo/protobuf v1.2.1
 	github.com/golang/lint v0.0.0-20181217174547-8f45f776aaf1 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/hashicorp/consul v1.4.2 // indirect

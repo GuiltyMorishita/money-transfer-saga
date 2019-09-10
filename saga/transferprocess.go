@@ -1,6 +1,8 @@
 package saga
 
 import (
+	"log"
+
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/GuiltyMorishita/money-transfer-saga/saga/messages"
 )
@@ -41,9 +43,6 @@ func (p *TransferProcess) TryDebit(targetActor *actor.PID, amount int) actor.Pro
 	})
 }
 
-func (p *TransferProcess) ApplyEvent() {
-}
-
 func (p *TransferProcess) Fail() bool {
 	return false
 }
@@ -77,6 +76,7 @@ func (p *TransferProcess) Receive(ctx actor.Context) {
 func (p *TransferProcess) Starting(ctx actor.Context) {
 	switch ctx.Message().(type) {
 	case *actor.Started:
+		ctx.Become(p.AwaitingDebitConfirmation)
 		ctx.SpawnNamed(p.TryDebit(p.From, -p.Amount), "DebitAttempt")
 	}
 }
@@ -87,13 +87,18 @@ func (p *TransferProcess) AwaitingDebitConfirmation(ctx actor.Context) {
 		ctx.SpawnNamed(p.TryDebit(p.From, -p.Amount), "DebitAttempt")
 
 	case *messages.OK:
+		ctx.Become(p.AwaitingCreditConfirmation)
 		ctx.SpawnNamed(p.TryCredit(p.From, +p.Amount), "CreditAttempt")
 
 	case *messages.Refused:
+		log.Println("Debit refused. System consistent")
+		p.ProcessCompleted = true
 		ctx.Parent().Tell(messages.FailedButConsistentResult{Pid: ctx.Self()})
 		p.StopAll(ctx)
 
 	case *actor.Terminated:
+		log.Println("Debit status unknown. Escalate")
+		p.ProcessCompleted = true
 		p.StopAll(ctx)
 	}
 }
@@ -104,13 +109,18 @@ func (p *TransferProcess) AwaitingCreditConfirmation(ctx actor.Context) {
 		ctx.SpawnNamed(p.TryCredit(p.To, +p.Amount), "CreditAttempt")
 
 	case *messages.OK:
+		log.Println("Success!")
+		p.ProcessCompleted = true
 		ctx.Parent().Tell(messages.SuccessResult{Pid: ctx.Self()})
 		p.StopAll(ctx)
 
 	case *messages.Refused:
+		ctx.Become(p.RollingBackDebit)
 		ctx.SpawnNamed(p.TryCredit(p.From, +p.Amount), "RollbackDebit")
 
 	case *actor.Terminated:
+		log.Println("Credit status unknown. Escalate")
+		p.ProcessCompleted = true
 		p.StopAll(ctx)
 	}
 }
@@ -121,10 +131,13 @@ func (p *TransferProcess) RollingBackDebit(ctx actor.Context) {
 		ctx.SpawnNamed(p.TryCredit(p.From, +p.Amount), "RollbackDebit")
 
 	case *messages.OK:
+		log.Println("Transfer failed. System consistent")
+		p.ProcessCompleted = true
 		ctx.Parent().Tell(messages.FailedButConsistentResult{Pid: ctx.Self()})
 		p.StopAll(ctx)
 
 	case *messages.Refused, *actor.Terminated:
+		log.Println("Transfer status unknown. Escalate")
 		ctx.Parent().Tell(messages.FailedAndInconsistent{Pid: ctx.Self()})
 		p.StopAll(ctx)
 	}
