@@ -24,6 +24,10 @@ type TransferFactory struct {
 }
 
 func (f *TransferFactory) CreateTransfer(actorName string, from, to *actor.PID, amount int) *actor.PID {
-	props := actor.FromProducer(func() actor.Actor { return saga.NewTransferProcess(from, to, amount, f.availability) })
+	props := actor.FromProducer(func() actor.Actor {
+		return saga.NewTransferProcess(from, to, amount, f.availability)
+	}).WithSupervisor(
+		actor.NewOneForOneStrategy(f.retryAttempts, 1000, actor.DefaultDecider),
+	)
 	return actor.SpawnNamed(props, actorName)
 }
