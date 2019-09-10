@@ -52,6 +52,7 @@ func (r *Runner) Receive(ctx actor.Context) {
 		for i := 0; i < r.numberOfIterations; i++ {
 			r.CreateAccount(fmt.Sprintf("FromAccount{%d}", i))
 			r.CreateAccount(fmt.Sprintf("ToAccount{%d}", i))
+			NewTransferFactory()
 		}
 
 	case messages.SuccessResult:
@@ -59,4 +60,31 @@ func (r *Runner) Receive(ctx actor.Context) {
 	case messages.FailedAndInconsistent:
 	case messages.FailedButConsistentResult:
 	}
+}
+
+func NewTransferFactory(
+	availability float64,
+	retryAttempts int,
+	ctx actor.Context,
+) *TransferFactory {
+	return &TransferFactory{
+		availability:  availability,
+		retryAttempts: retryAttempts,
+		ctx:           ctx,
+	}
+}
+
+type TransferFactory struct {
+	availability  float64
+	retryAttempts int
+	ctx           actor.Context
+}
+
+func (f *TransferFactory) CreateTransfer(actorName string, from, to *actor.PID, amount int) *actor.PID {
+	props := actor.FromProducer(func() actor.Actor {
+		return saga.NewTransferProcess(from, to, amount, f.availability)
+	}).WithSupervisor(
+		actor.NewOneForOneStrategy(f.retryAttempts, 1000, actor.DefaultDecider),
+	)
+	return actor.SpawnNamed(props, actorName)
 }
