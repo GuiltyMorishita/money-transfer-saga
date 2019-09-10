@@ -3,7 +3,7 @@ module github.com/GuiltyMorishita/money-transfer-saga
 go 1.12
 
 require (
-	github.com/AsynkronIT/goconsole v0.0.0-20160504192649-bfa12eebf716 // indirect
+	github.com/AsynkronIT/goconsole v0.0.0-20160504192649-bfa12eebf716
 	github.com/AsynkronIT/gonet v0.0.0-20161127091928-0553637be225 // indirect
 	github.com/AsynkronIT/goring v0.0.0-20170128102743-5d0f2b2a8109 // indirect
 	github.com/AsynkronIT/protoactor-go v0.0.0-20190317195722-3670367f0c29

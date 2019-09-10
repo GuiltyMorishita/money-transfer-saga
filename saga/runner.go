@@ -2,6 +2,7 @@ package saga
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/GuiltyMorishita/money-transfer-saga/saga/messages"
@@ -52,6 +53,7 @@ func (r *Runner) Receive(ctx actor.Context) {
 			to := r.CreateAccount(fmt.Sprintf("ToAccount %d", i))
 			factory := NewTransferFactory(r.uptime, r.retryAttempts, ctx)
 			factory.CreateTransfer(fmt.Sprintf("Transfer Prossess %d", i), from, to, 10)
+			log.Println(fmt.Sprintf("Started %d / %d", i+1, r.numberOfIterations))
 		}
 
 	case messages.SuccessResult:
