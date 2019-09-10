@@ -1,13 +1,14 @@
 package saga
 
 import (
+	"math/rand"
 	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/GuiltyMorishita/money-transfer-saga/saga/messages"
 )
 
-func NewAccount(name string, serviceUptime, refusalProbability, busyProbability int64) *Account {
+func NewAccount(name string, serviceUptime, refusalProbability, busyProbability float64) *Account {
 	return &Account{
 		Name:               name,
 		ServiceUptime:      serviceUptime,
@@ -18,9 +19,9 @@ func NewAccount(name string, serviceUptime, refusalProbability, busyProbability 
 
 type Account struct {
 	Name               string
-	ServiceUptime      int64
-	RefusalProbability int64
-	BusyProbability    int64
+	ServiceUptime      float64
+	RefusalProbability float64
+	BusyProbability    float64
 	ProcessedMessages  map[*actor.PID]interface{}
 	Balance            int
 }
@@ -39,12 +40,10 @@ func (a *Account) Receive(ctx actor.Context) {
 			a.Reply(msg.ReplyTo)
 			return
 		}
-
 		if msg.Amount+a.Balance >= 0 {
 			a.AdjustBalance(msg.ReplyTo, msg.Amount)
 			return
 		}
-
 		msg.ReplyTo.Tell(messages.InsufficientFunds{})
 
 	case messages.GetBalance:
@@ -87,11 +86,13 @@ func (a *Account) AdjustBalance(replyTo *actor.PID, amount int) {
 }
 
 func (a *Account) Busy() bool {
-	return false
+	comparison := rand.Float64() * 100
+	return comparison <= a.BusyProbability
 }
 
 func (a *Account) RefusePermanently() bool {
-	return false
+	comparison := rand.Float64() * 100
+	return comparison <= a.RefusalProbability
 }
 
 func (a *Account) Failure(replyTo *actor.PID) {
@@ -99,6 +100,13 @@ func (a *Account) Failure(replyTo *actor.PID) {
 }
 
 func (a *Account) DetermineProcessingBehavior() Behavior {
+	comparison := rand.Float64() * 100
+	if comparison > a.ServiceUptime {
+		if rand.Float64()*100 > 50 {
+			return FailBeforeProcessing
+		}
+		return FailAfterProcessing
+	}
 	return ProcessSuccessfully
 }
 
