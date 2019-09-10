@@ -20,11 +20,13 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.0 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.0 // indirect
 	github.com/hashicorp/serf v0.8.2 // indirect
+	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/opentracing/opentracing-go v1.0.2 // indirect
 	github.com/orcaman/concurrent-map v0.0.0-20190107190726-7ed82d9cb717 // indirect
 	github.com/serialx/hashring v0.0.0-20180504054112-49a4782e9908 // indirect
 	github.com/uber/jaeger-client-go v2.15.0+incompatible // indirect
 	github.com/uber/jaeger-lib v1.5.0 // indirect
+	github.com/yudai/pp v2.0.1+incompatible
 	google.golang.org/appengine v1.4.0 // indirect
 	gopkg.in/couchbase/gocbcore.v7 v7.1.11 // indirect
 	gopkg.in/couchbaselabs/gocbconnstr.v1 v1.0.2 // indirect

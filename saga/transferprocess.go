@@ -2,6 +2,7 @@ package saga
 
 import (
 	"log"
+	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/GuiltyMorishita/money-transfer-saga/saga/messages"
@@ -31,7 +32,7 @@ func (f *TransferFactory) CreateTransfer(actorName string, from, to *actor.PID, 
 	}).WithSupervisor(
 		actor.NewOneForOneStrategy(f.retryAttempts, 1000, actor.DefaultDecider),
 	)
-	return actor.SpawnNamed(props, actorName)
+	return f.ctx.SpawnNamed(props, actorName)
 }
 
 func NewTransferProcess(from, to *actor.PID, amount int, availability float64) *TransferProcess {
@@ -88,6 +89,7 @@ func (p *TransferProcess) Receive(ctx actor.Context) {
 	case *actor.Stopped:
 		if !p.ProcessCompleted {
 			ctx.Parent().Tell(messages.UnknownResult{Pid: ctx.Self()})
+			return
 		}
 
 	case *actor.Terminated:
@@ -96,13 +98,16 @@ func (p *TransferProcess) Receive(ctx actor.Context) {
 			// Terminated message for any child actors due to them being stopped but we should not
 			// treat this as a failure of the saga, so return here to stop further processing
 		}
+		return
 	}
-	ctx.Receive(ctx)
+
+	ctx.Self().RequestFuture(ctx.Message(), 10*time.Second).Result()
 }
 
 func (p *TransferProcess) Starting(ctx actor.Context) {
 	switch ctx.Message().(type) {
 	case *actor.Started:
+		log.Println("Try Debit")
 		ctx.Become(p.AwaitingDebitConfirmation)
 		ctx.SpawnNamed(p.TryDebit(p.From, -p.Amount), "DebitAttempt")
 	}
@@ -114,8 +119,9 @@ func (p *TransferProcess) AwaitingDebitConfirmation(ctx actor.Context) {
 		ctx.SpawnNamed(p.TryDebit(p.From, -p.Amount), "DebitAttempt")
 
 	case *messages.OK:
+		log.Println("Try Credit")
 		ctx.Become(p.AwaitingCreditConfirmation)
-		ctx.SpawnNamed(p.TryCredit(p.From, +p.Amount), "CreditAttempt")
+		ctx.SpawnNamed(p.TryCredit(p.To, +p.Amount), "CreditAttempt")
 
 	case *messages.Refused:
 		log.Println("Debit refused. System consistent")

@@ -14,6 +14,8 @@ func NewAccount(name string, serviceUptime, refusalProbability, busyProbability 
 		ServiceUptime:      serviceUptime,
 		RefusalProbability: refusalProbability,
 		BusyProbability:    busyProbability,
+		ProcessedMessages:  map[*actor.PID]interface{}{},
+		Balance:            10,
 	}
 }
 
@@ -28,14 +30,14 @@ type Account struct {
 
 func (a *Account) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
-	case messages.Credit:
+	case *messages.Credit:
 		if a.AlreadyProcessed(msg.ReplyTo) {
 			a.Reply(msg.ReplyTo)
 			return
 		}
 		a.AdjustBalance(msg.ReplyTo, msg.Amount)
 
-	case messages.Debit:
+	case *messages.Debit:
 		if a.AlreadyProcessed(msg.ReplyTo) {
 			a.Reply(msg.ReplyTo)
 			return
@@ -46,7 +48,7 @@ func (a *Account) Receive(ctx actor.Context) {
 		}
 		msg.ReplyTo.Tell(messages.InsufficientFunds{})
 
-	case messages.GetBalance:
+	case *messages.GetBalance:
 		ctx.Respond(a.Balance)
 	}
 }
@@ -57,7 +59,7 @@ func (a *Account) Reply(replyTo *actor.PID) {
 
 func (a *Account) AdjustBalance(replyTo *actor.PID, amount int) {
 	if a.RefusePermanently() {
-		a.ProcessedMessages[replyTo] = messages.Refused{}
+		a.ProcessedMessages[replyTo] = &messages.Refused{}
 		replyTo.Tell(messages.Refused{})
 		return
 	}
@@ -75,14 +77,14 @@ func (a *Account) AdjustBalance(replyTo *actor.PID, amount int) {
 	time.Sleep(150 * time.Millisecond)
 
 	a.Balance += amount
-	a.ProcessedMessages[replyTo] = messages.OK{}
+	a.ProcessedMessages[replyTo] = &messages.OK{}
 
 	if behavior == FailAfterProcessing {
 		a.Failure(replyTo)
 		return
 	}
 
-	replyTo.Tell(messages.OK{})
+	replyTo.Tell(&messages.OK{})
 }
 
 func (a *Account) Busy() bool {
@@ -96,7 +98,7 @@ func (a *Account) RefusePermanently() bool {
 }
 
 func (a *Account) Failure(replyTo *actor.PID) {
-	replyTo.Tell(messages.InternalServerError{})
+	replyTo.Tell(&messages.InternalServerError{})
 }
 
 func (a *Account) DetermineProcessingBehavior() Behavior {

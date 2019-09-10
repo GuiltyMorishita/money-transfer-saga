@@ -23,7 +23,7 @@ func (p *AccountProxy) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
 		p.Target.Tell(p.CreateMessage(ctx.Self()))
-		ctx.SetReceiveTimeout(100 * time.Millisecond)
+		ctx.SetReceiveTimeout(500 * time.Millisecond)
 		return
 
 	case *messages.OK:

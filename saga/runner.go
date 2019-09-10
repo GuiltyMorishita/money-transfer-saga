@@ -56,13 +56,15 @@ func (r *Runner) Receive(ctx actor.Context) {
 			log.Println(fmt.Sprintf("Started %d / %d", i+1, r.numberOfIterations))
 		}
 
-	case messages.SuccessResult:
+	case *messages.SuccessResult:
 		r.successResults++
-	case messages.UnknownResult:
+		log.Println("successResult")
+
+	case *messages.UnknownResult:
 		r.unknownResults++
-	case messages.FailedAndInconsistent:
+	case *messages.FailedAndInconsistent:
 		r.failedAndInconsistentResults++
-	case messages.FailedButConsistentResult:
+	case *messages.FailedButConsistentResult:
 		r.failedButConsistentResults++
 	}
 }
