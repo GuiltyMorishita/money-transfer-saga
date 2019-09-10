@@ -26,7 +26,6 @@ func NewRunner(
 }
 
 type Runner struct {
-	// private RootContext Context = RootContext.Empty;
 	intervalBetweenConsoleUpdates int
 	numberOfIterations            int
 	uptime                        float64
@@ -34,11 +33,10 @@ type Runner struct {
 	busyProbability               float64
 	retryAttempts                 int
 	verbose                       bool
-	// private readonly HashSet<PID> _transfers = new HashSet<PID>();
-	successResults               int
-	failedAndInconsistentResults int
-	failedButConsistentResults   int
-	unknownResults               int
+	successResults                int
+	failedAndInconsistentResults  int
+	failedButConsistentResults    int
+	unknownResults                int
 }
 
 func (r *Runner) CreateAccount(name string) *actor.PID {
@@ -50,41 +48,19 @@ func (r *Runner) Receive(ctx actor.Context) {
 	switch ctx.Message().(type) {
 	case *actor.Started:
 		for i := 0; i < r.numberOfIterations; i++ {
-			r.CreateAccount(fmt.Sprintf("FromAccount{%d}", i))
-			r.CreateAccount(fmt.Sprintf("ToAccount{%d}", i))
-			NewTransferFactory()
+			from := r.CreateAccount(fmt.Sprintf("FromAccount %d", i))
+			to := r.CreateAccount(fmt.Sprintf("ToAccount %d", i))
+			factory := NewTransferFactory(r.uptime, r.retryAttempts, ctx)
+			factory.CreateTransfer(fmt.Sprintf("Transfer Prossess %d", i), from, to, 10)
 		}
 
 	case messages.SuccessResult:
+		r.successResults++
 	case messages.UnknownResult:
+		r.unknownResults++
 	case messages.FailedAndInconsistent:
+		r.failedAndInconsistentResults++
 	case messages.FailedButConsistentResult:
+		r.failedButConsistentResults++
 	}
-}
-
-func NewTransferFactory(
-	availability float64,
-	retryAttempts int,
-	ctx actor.Context,
-) *TransferFactory {
-	return &TransferFactory{
-		availability:  availability,
-		retryAttempts: retryAttempts,
-		ctx:           ctx,
-	}
-}
-
-type TransferFactory struct {
-	availability  float64
-	retryAttempts int
-	ctx           actor.Context
-}
-
-func (f *TransferFactory) CreateTransfer(actorName string, from, to *actor.PID, amount int) *actor.PID {
-	props := actor.FromProducer(func() actor.Actor {
-		return saga.NewTransferProcess(from, to, amount, f.availability)
-	}).WithSupervisor(
-		actor.NewOneForOneStrategy(f.retryAttempts, 1000, actor.DefaultDecider),
-	)
-	return actor.SpawnNamed(props, actorName)
 }
