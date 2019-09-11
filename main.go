@@ -10,7 +10,7 @@ import (
 
 func main() {
 	var (
-		numberOfTransfers  = 5
+		numberOfTransfers  = 1000
 		uptime             = 99.99
 		refusalProbability = 0.01
 		busyProbability    = 0.01

@@ -6,6 +6,7 @@ import (
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/GuiltyMorishita/money-transfer-saga/saga/messages"
+	"github.com/yudai/pp"
 )
 
 func NewRunner(
@@ -58,12 +59,15 @@ func (r *Runner) Receive(ctx actor.Context) {
 
 	case *messages.SuccessResult:
 		r.successResults++
-		log.Println("successResult")
+
+		pp.Println(ctx.Message())
 
 	case *messages.UnknownResult:
 		r.unknownResults++
+
 	case *messages.FailedAndInconsistent:
 		r.failedAndInconsistentResults++
+
 	case *messages.FailedButConsistentResult:
 		r.failedButConsistentResults++
 	}

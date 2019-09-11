@@ -2,7 +2,6 @@ package saga
 
 import (
 	"log"
-	"time"
 
 	"github.com/AsynkronIT/protoactor-go/actor"
 	"github.com/GuiltyMorishita/money-transfer-saga/saga/messages"
@@ -30,7 +29,7 @@ func (f *TransferFactory) CreateTransfer(actorName string, from, to *actor.PID, 
 	props := actor.FromProducer(func() actor.Actor {
 		return NewTransferProcess(from, to, amount, f.availability)
 	}).WithSupervisor(
-		actor.NewOneForOneStrategy(f.retryAttempts, 1000, actor.DefaultDecider),
+		actor.NewOneForOneStrategy(f.retryAttempts, 10000, actor.DefaultDecider),
 	)
 	return f.ctx.SpawnNamed(props, actorName)
 }
@@ -88,7 +87,7 @@ func (p *TransferProcess) Receive(ctx actor.Context) {
 
 	case *actor.Stopped:
 		if !p.ProcessCompleted {
-			ctx.Parent().Tell(messages.UnknownResult{Pid: ctx.Self()})
+			ctx.Parent().Tell(&messages.UnknownResult{Pid: ctx.Self()})
 			return
 		}
 
@@ -101,7 +100,7 @@ func (p *TransferProcess) Receive(ctx actor.Context) {
 		return
 	}
 
-	ctx.Self().RequestFuture(ctx.Message(), 10*time.Second).Result()
+	ctx.Self().Tell(ctx.Message())
 }
 
 func (p *TransferProcess) Starting(ctx actor.Context) {
@@ -126,7 +125,7 @@ func (p *TransferProcess) AwaitingDebitConfirmation(ctx actor.Context) {
 	case *messages.Refused:
 		log.Println("Debit refused. System consistent")
 		p.ProcessCompleted = true
-		ctx.Parent().Tell(messages.FailedButConsistentResult{Pid: ctx.Self()})
+		ctx.Parent().Tell(&messages.FailedButConsistentResult{Pid: ctx.Self()})
 		p.StopAll(ctx)
 
 	case *actor.Terminated:
@@ -144,7 +143,7 @@ func (p *TransferProcess) AwaitingCreditConfirmation(ctx actor.Context) {
 	case *messages.OK:
 		log.Println("Success!")
 		p.ProcessCompleted = true
-		ctx.Parent().Tell(messages.SuccessResult{Pid: ctx.Self()})
+		ctx.Parent().Tell(&messages.SuccessResult{Pid: ctx.Self()})
 		p.StopAll(ctx)
 
 	case *messages.Refused:
@@ -166,12 +165,12 @@ func (p *TransferProcess) RollingBackDebit(ctx actor.Context) {
 	case *messages.OK:
 		log.Println("Transfer failed. System consistent")
 		p.ProcessCompleted = true
-		ctx.Parent().Tell(messages.FailedButConsistentResult{Pid: ctx.Self()})
+		ctx.Parent().Tell(&messages.FailedButConsistentResult{Pid: ctx.Self()})
 		p.StopAll(ctx)
 
 	case *messages.Refused, *actor.Terminated:
 		log.Println("Transfer status unknown. Escalate")
-		ctx.Parent().Tell(messages.FailedAndInconsistent{Pid: ctx.Self()})
+		ctx.Parent().Tell(&messages.FailedAndInconsistent{Pid: ctx.Self()})
 		p.StopAll(ctx)
 	}
 }
@@ -179,5 +178,5 @@ func (p *TransferProcess) RollingBackDebit(ctx actor.Context) {
 func (p *TransferProcess) StopAll(ctx actor.Context) {
 	p.From.Stop()
 	p.To.Stop()
-	ctx.Self().Stop()
+	// ctx.Self().Stop()
 }
